@@ -52,7 +52,32 @@ INSTR_FORMAT = {
     'ppbrrformat' : '$instr $rd, $rs1, $rs2',
     'prrformat'   : '$instr ',
     'prrrformat'  : '$instr',
-    'dcasrformat'   : '$instr '
+    'dcasrformat'   : '$instr ',
+    'pbrdrrformat': '$instr $rd, $rs1, $rs2',
+    'phrdrrformat': '$instr $rd, $rs1, $rs2',
+    'pwrdrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnbrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnhrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnwrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnbrdrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnhrdrrformat': '$instr $rd, $rs1, $rs2',
+    'pnnwrdrrformat': '$instr $rd, $rs1, $rs2',
+    'pppbrrformat': '$instr $rd, $rs1, $rs2',
+    'ppphrrformat': '$instr $rd, $rs1, $rs2',
+    'pppwrrformat': '$instr $rd, $rs1, $rs2',
+    'pppdrrformat': '$instr $rd, $rs1, $rs2',
+    'ppnbrrformat': '$instr $rd, $rs1, $rs2',
+    'ppnhrrformat': '$instr $rd, $rs1, $rs2',
+    'ppnwrrformat': '$instr $rd, $rs1, $rs2',
+    'ppndrrformat': '$instr $rd, $rs1, $rs2',
+    'ppbriformat': '$instr $rd, $rs1, SEXT_IMM($imm_val)',
+    'pphriformat': '$instr $rd, $rs1, SEXT_IMM($imm_val)',
+    'ppwriformat': '$instr $rd, $rs1, SEXT_IMM($imm_val)',
+    'ppdriformat': '$instr $rd, $rs1, SEXT_IMM($imm_val)',
+    'ppbrformat': '$instr $rd, $rs1',
+    'pphrformat': '$instr $rd, $rs1',
+    'ppwrformat': '$instr $rd, $rs1',
+    'ppdrformat': '$instr $rd, $rs1'
 }
 '''Dictionary to store instruction formats'''
 

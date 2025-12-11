@@ -141,6 +141,25 @@ def concat_simd_data(instr_dict, xlen, _bit_width):
                         val = val + twocompl_offset
                     rs2_val += val << (i*bit_width2)
                 instr['rs2_val'] = format(rs2_val, f"#0{xlen//4}x")
+        if 'rd' in instr:
+            twocompl_offset = 1<<bit_width1
+            fmt, sz= get_fmt_sz(bit_width1)
+            if 'rd_val' in instr:  # single element value
+                rd_val = int(instr['rd_val'])
+                if rd_val < 0:
+                    rd_val = rd_val + twocompl_offset
+                instr['rd_val'] = format(rd_val, f"#0x")
+            else:   # concatenates all element of a SIMD register into a single value
+                rd_val = 0
+                for i in range(xlen//bit_width1):
+                    val_var = f"rd_{sz}{i}_val"
+                    if val_var not in instr:   # no need to read rd
+                        break
+                    val = int(instr[val_var])
+                    if val < 0:
+                        val = val + twocompl_offset
+                    rd_val += val << (i*bit_width1)
+                instr['rd_val'] = format(rd_val, f"#0{xlen//4}x")
         if 'imm_val' in instr:
             imm_val = int(instr['imm_val'])
             instr['imm_val'] = format(imm_val, f"#0x")
@@ -186,7 +205,7 @@ def gen_pair_reg_data(instr_dict, xlen, _bit_width, p64_profile):
 
     for instr in instr_dict:
         if 'rs1' in instr:
-            twocompl_offset = 1<<bit_width1
+            twocompl_offset = 1 << bit_width1
             fmt, sz= get_fmt_sz(bit_width1)
 
             if 'rs1_val' in instr:
@@ -195,23 +214,23 @@ def gen_pair_reg_data(instr_dict, xlen, _bit_width, p64_profile):
                     rs1_val = rs1_val + twocompl_offset
             else:
                 rs1_val = 0
-                for i in range(rs1_width//bit_width1):
+                for i in range(rs1_width // bit_width1):
                     val_var = f"rs1_{sz}{i}_val"
                     val = int(instr[val_var])
                     if val < 0:
                         val = val + twocompl_offset
-                    rs1_val += val << (i*bit_width1)
+                    rs1_val += val << (i * bit_width1)
             if rs1_width > xlen:
-                instr['rs1_val'] = format(0xffffffff & rs1_val, f"#0{2+xlen//4}x")
-                instr['rs1_val_hi'] = format(0xffffffff & (rs1_val>>32), f"#0{2+xlen//4}x")
+                instr['rs1_val'] = format(0xffffffff & rs1_val, f"#0{2 + xlen // 4}x")
+                instr['rs1_val_hi'] = format(0xffffffff & (rs1_val >> 32), f"#0{2 + xlen // 4}x")
                 instr['rs1_hi'] = incr_reg_num(instr['rs1'])
             else:
-                instr['rs1_val'] = format(rs1_val, f"#0{2+xlen//4}x")
+                instr['rs1_val'] = format(rs1_val, f"#0{2 + xlen // 4}x")
             if rs1_width == 64 and (len(p64_profile) >= 3):
                 instr['rs1_val64'] = format(rs1_val, f"#018x")
 
         if 'rs2' in instr:
-            twocompl_offset = 1<<bit_width2
+            twocompl_offset = 1 << bit_width2
             fmt, sz= get_fmt_sz(bit_width2)
 
             if 'rs2_val' in instr:  # single element value
@@ -220,23 +239,51 @@ def gen_pair_reg_data(instr_dict, xlen, _bit_width, p64_profile):
                     rs2_val = rs2_val + twocompl_offset
             else: # concatenates all element of a SIMD register into a single value
                 rs2_val = 0
-                for i in range(rs2_width//bit_width2):
+                for i in range(rs2_width // bit_width2):
                     val_var = f"rs2_{sz}{i}_val"
                     val = int(instr[val_var])
                     if val < 0:
                         val = val + twocompl_offset
-                    rs2_val += val << (i*bit_width2)
+                    rs2_val += val << (i * bit_width2)
             if rs2_width > xlen:
-                instr['rs2_val'] = format(0xffffffff & rs2_val, f"#0{2+xlen//4}x")
-                instr['rs2_val_hi'] = format(0xffffffff & (rs2_val>>32), f"#0{2+xlen//4}x")
+                instr['rs2_val'] = format(0xffffffff & rs2_val, f"#0{2 + xlen // 4}x")
+                instr['rs2_val_hi'] = format(0xffffffff & (rs2_val >> 32), f"#0{2 + xlen // 4}x")
                 instr['rs2_hi'] = incr_reg_num(instr['rs2'])
             else:
-                instr['rs2_val'] = format(rs2_val, f"#0{2+xlen//4}x")
+                instr['rs2_val'] = format(rs2_val, f"#0{2 + xlen // 4}x")
             if rs2_width == 64 and (len(p64_profile) >= 3):
                 instr['rs2_val64'] = format(rs2_val, f"#018x")
 
-        if 'rd' in instr and rd_width > xlen:
-            instr['rd_hi'] = incr_reg_num(instr['rd'])
+        if 'rd' in instr:
+            twocompl_offset = 1<<bit_width2
+            fmt, sz= get_fmt_sz(bit_width2)
+
+            if rd_width > xlen:
+                instr['rd_hi'] = incr_reg_num(instr['rd'])
+
+            pat = re.compile(r'^rd(?:_\w+)*_val$')
+            if any(pat.fullmatch(k) for k in instr.keys()):
+
+                if 'rd_val' in instr:  # single element value
+                    rd_val = int(instr['rd_val'])
+                    if rd_val < 0:
+                        rd_val = rd_val + twocompl_offset
+                else: # concatenates all element of a SIMD register into a single value
+                    rd_val = 0
+                    for i in range(rd_width//bit_width2):
+                        val_var = f"rd_{sz}{i}_val"
+                        val = int(instr[val_var])
+                        if val < 0:
+                            val = val + twocompl_offset
+                        rd_val += val << (i*bit_width2)
+                if rd_width > xlen:
+                    instr['rd_val'] = format(0xffffffff & rd_val, f"#0{2+xlen//4}x")
+                    instr['rd_val_hi'] = format(0xffffffff & (rd_val>>32), f"#0{2+xlen//4}x")
+                else:
+                    instr['rd_val'] = format(rd_val, f"#0{2+xlen//4}x")
+                if rd_width == 64 and (len(p64_profile) >= 3):
+                    instr['rd_val64'] = format(rd_val, f"#018x")
+
 
         if 'imm_val' in instr:
             imm_val = int(instr['imm_val'])

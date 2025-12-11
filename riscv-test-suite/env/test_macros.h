@@ -537,8 +537,8 @@ Mend_PMP:                                    ;\
 // This macro is for vector 
 #define RVTEST_VXSAT_ENABLE()			;\
  LI(a0, (MSTATUS_VS & (MSTATUS_VS >> 1)))	;\
- csrs mstatus, a0				;\
- clrov
+//  csrs mstatus, a0				;\
+//  clrov
 
 /* RVTEST_SIGBASE(reg, label) initializes to label and clears offset */
 #define RVTEST_SIGBASE(_R,_TAG)			;\
@@ -953,6 +953,12 @@ ADDI(swreg, swreg, RVMODEL_CBZ_BLOCKSIZE)
     RVTEST_SIGUPD_FID(swreg,destreg,flagreg)	;\
     RVMODEL_IO_ASSERT_GPR_EQ(testreg, destreg, correctval)
 
+#define TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, code... )	;\
+    code				;\
+    RVTEST_SIGUPD_P64(swreg,destreg, destreg_hi, offset)	;\
+    RVMODEL_IO_ASSERT_GPR_EQ(testreg, destreg, correctval)	;\
+    RVMODEL_IO_ASSERT_GPR_EQ(testreg, destreg_hi, correctval_hi)	;\
+
 #define TEST_AUIPC(inst, destreg, correctval, imm, swreg, offset, testreg)	;\
     TEST_CASE(testreg, destreg, correctval, swreg, offset, \
       LA testreg, 1f			;\
@@ -1039,6 +1045,14 @@ ADDI(swreg, swreg, RVMODEL_CBZ_BLOCKSIZE)
 //Tests for a instructions with register-register operand
 #define TEST_RR_OP(inst, destreg, reg1, reg2, correctval, val1, val2, swreg, offset, testreg) \
     TEST_CASE(testreg, destreg, correctval, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      inst destreg, reg1, reg2			;\
+    )
+//Tests for instructions with register-register operand and destination register read
+#define TEST_RD_RR_OP(inst, destreg, reg1, reg2, correctval, vald, val1, val2, swreg, offset, testreg) \
+    TEST_CASE(testreg, destreg, correctval, swreg, offset, \
+      LI(destreg, MASK_XLEN(vald))		;\
       LI(reg1, MASK_XLEN(val1))			;\
       LI(reg2, MASK_XLEN(val2))			;\
       inst destreg, reg1, reg2			;\
@@ -1205,11 +1219,94 @@ ADDI(swreg, swreg, RVMODEL_CBZ_BLOCKSIZE)
 #define TEST_PK64_PNN_OP(inst, rd, rd_hi, rs1, rs2, correctval, correctval_hi, rs1_val, rs2_val, flagreg, swreg, offset, testreg) \
     TEST_PK64_PNN_OP_32(inst, rd, rd_hi, rs1, rs2, correctval, correctval_hi, rs1_val, rs2_val, flagreg, swreg, offset, testreg)
 //Tests for a instruction with normal register rd, pair register rs1 and normal register rs2
-#define TEST_P64_NPN_OP(inst, rd, rs1, rs1_hi, rs2, correctval, correctval_hi, rs1_val, rs1_val_hi, rs2_val, swreg, offset, testreg) \
-    TEST_P64_NPN_OP_32(inst, rd, rs1, rs1_hi, rs2, correctval, correctval_hi, rs1_val, rs1_val_hi, rs2_val, swreg, offset, testreg)
+#define TEST_P64_NPN_OP(inst, rd, rs1, rs1_hi, rs2, correctval, rs1_val, rs1_val_hi, rs2_val, swreg, offset, testreg) \
+    TEST_P64_NPN_OP_32(inst, rd, rs1, rs1_hi, rs2, correctval, rs1_val, rs1_val_hi, rs2_val, swreg, offset, testreg)
 //Tests for a instruction with normal register rd, pair register rs1
-#define TEST_P64_NP_OP(inst, rd, rs1, rs1_hi, correctval, correctval_hi, rs1_val, rs1_val_hi, imm_val, swreg, offset, testreg) \
-    TEST_P64_NP_OP_32(inst, rd, rs1, rs1_hi, correctval, correctval_hi, rs1_val, rs1_val_hi, imm_val, swreg, offset, testreg)
+#define TEST_P64_NP_OP(inst, rd, rs1, rs1_hi, correctval, rs1_val, rs1_val_hi, imm_val, swreg, offset, testreg) \
+    TEST_P64_NP_OP_32(inst, rd, rs1, rs1_hi, correctval, rs1_val, rs1_val_hi, imm_val, swreg, offset, testreg)
+
+//Tests for instructions with pair register rd, pair register rs1, and pair register rs2
+#define TEST_PAIR_PPP_OP(inst, destreg, destreg_hi, reg1, reg1_hi, reg2, reg2_hi, correctval, correctval_hi, val1, val1_hi, val2, val2_hi, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      LI(reg2_hi, MASK_XLEN(val2_hi))	;\
+      inst destreg, reg1, reg2			;\
+    )
+
+//Tests for instructions with pair register rd, pair register rs1, and normal register rs2
+#define TEST_PAIR_PPN_OP(inst, destreg, destreg_hi, reg1, reg1_hi, reg2, correctval, correctval_hi, val1, val1_hi, val2, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      inst destreg, reg1, reg2			;\
+    )
+
+//Tests for instructions with pair register rd, normal register rs1, and normal register rs2
+#define TEST_PAIR_PNN_OP(inst, destreg, destreg_hi, reg1, reg2, correctval, correctval_hi, val1, val2, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      inst destreg, reg1, reg2			;\
+    )
+
+//Tests for instructions with pair register rd, normal register rs1, normal register rs2, and destination register read
+#define TEST_PAIR_RD_PNN_OP(inst, destreg, destreg_hi, reg1, reg2, correctval, correctval_hi, vald, vald_hi, val1, val2, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(destreg, MASK_XLEN(vald))		;\
+      LI(destreg_hi, MASK_XLEN(vald_hi));\
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      inst destreg, reg1, reg2			;\
+    )
+
+//Tests for instructions with normal register rd, pair register rs1, and normal register rs2
+#define TEST_PAIR_NPN_OP(inst, destreg, reg1, reg1_hi, reg2, correctval, val1, val1_hi, val2, swreg, offset, testreg) \
+    TEST_CASE(testreg, destreg, correctval, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      LI(reg2, MASK_XLEN(val2))			;\
+      inst destreg, reg1, reg2			;\
+    )
+
+//Tests for instructions with pair register rd and pair register rs1
+#define TEST_PAIR_PP_OP(inst, destreg, destreg_hi, reg1, reg1_hi, correctval, correctval_hi, val1, val1_hi, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      inst destreg, reg1				;\
+    )
+
+//Tests for instructions with pair register rd, pair register rs1, and immediate
+#define TEST_PAIR_PP_IMM_OP(inst, destreg, destreg_hi, reg1, reg1_hi, imm, correctval, correctval_hi, val1, val1_hi, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      inst destreg, reg1, imm			;\
+    )
+
+//Tests for instructions with pair register rd, normal register rs1, and immediate
+#define TEST_PAIR_PN_IMM_OP(inst, destreg, destreg_hi, reg1, imm, correctval, correctval_hi, val1, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      inst destreg, reg1, imm			;\
+    )
+
+//Tests for instructions with normal register rd, pair register rs1, and immediate
+#define TEST_PAIR_NP_IMM_OP(inst, destreg, reg1, reg1_hi, imm, correctval, val1, val1_hi, swreg, offset, testreg) \
+    TEST_CASE(testreg, destreg, correctval, swreg, offset, \
+      LI(reg1, MASK_XLEN(val1))			;\
+      LI(reg1_hi, MASK_XLEN(val1_hi))	;\
+      inst destreg, reg1, imm			;\
+    )
+
+//Tests for instructions with pair register rd and immediate
+#define TEST_PAIR_P_IMM_OP(inst, destreg, destreg_hi, imm, correctval, correctval_hi, swreg, offset, testreg) \
+    TEST_CASE_PAIR(testreg, destreg, destreg_hi, correctval, correctval_hi, swreg, offset, \
+      inst destreg, imm					;\
+    )
 
 #else
 
